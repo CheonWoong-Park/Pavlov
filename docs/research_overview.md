@@ -1,7 +1,5 @@
 # 연구 개요
 
-`plan.md`(연구 계획서)를 풀어서 설명한 문서. 뭔가 어긋나면 plan.md가 기준이다.
-
 ## 1. 문제 의식과 가설
 
 Ghidra 같은 decompiler가 내놓는 pseudocode는 컴파일은 가능해도 가독성이 낮다

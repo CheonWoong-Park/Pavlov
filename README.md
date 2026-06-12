@@ -46,7 +46,7 @@ Ghidra pseudocode, checkpoint, 로컬 캐시는 `.gitignore`로 제외한다.
 
 ```
 pavlov/
-├── plan.md                  # 연구 계획서 (사용자 작성)
+├── plan.md                  # 연구 계획서 v2 (2026-06-12 개정)
 ├── README.md                # 이 문서
 ├── requirements-lock.txt    # 의존성 lock (uv pip freeze)
 ├── src/                     # 파이프라인 코드
