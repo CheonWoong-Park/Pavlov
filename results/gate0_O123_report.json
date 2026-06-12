@@ -1,0 +1,12 @@
+{
+ "binaries": 30,
+ "projects": 15,
+ "ghidra_functions_total": 39883,
+ "ghidra_functions_named": 39694,
+ "dataset_c_records_in_projects": 47135,
+ "dataset_unique_keys": 12012,
+ "matched_pairs_written": 18550,
+ "matched_unique_keys": 8243,
+ "yield_dataset_coverage": 0.6862,
+ "yield_ghidra_named_matched": 0.2077
+}

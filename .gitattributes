@@ -1,0 +1,27 @@
+* text=auto eol=lf
+
+*.py text eol=lf
+*.sh text eol=lf
+*.java text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+data/matched/*.jsonl -diff
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.rar binary
+*.pt binary
+*.pth binary
+*.safetensors binary
+*.ckpt binary
+
+tools/LLM4Decompile/** linguist-vendored

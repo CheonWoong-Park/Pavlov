@@ -1,0 +1,12 @@
+/home/manwoong/pavlov-data/miniset_bins/ARMmbed[P]mbed-crypto[P]build_O0[P]tests[P]test_suite_psa_crypto
+/home/manwoong/pavlov-data/miniset_bins/codexns[P]putty[P]build_O0[P]plink
+/home/manwoong/pavlov-data/miniset_bins/apitrace[P]apitrace-tests[P]build_O0[P]apps[P]gl[P]coherent_memory_write
+/home/manwoong/pavlov-data/miniset_bins/Azure[P]azure-uamqp-c[P]build_O0[P]samples[P]websockets_sample[P]websockets_sample
+/home/manwoong/pavlov-data/miniset_bins/bughoho[P]capstone[P]build_O0[P]test_arm_regression
+/home/manwoong/pavlov-data/miniset_bins/cmusphinx[P]sphinxtrain[P]build_O0[P]sphinx3_align
+/home/manwoong/pavlov-data/miniset_bins/9chu[P]LuaJIT-cmake[P]build_O0[P]lua-static
+/home/manwoong/pavlov-data/miniset_bins/aosp-mirror[P]platform_external_libxml2[P]build_O0[P]libxml2.so.2.14.0
+/home/manwoong/pavlov-data/miniset_bins/angband[P]angband[P]build_O0[P]Angband
+/home/manwoong/pavlov-data/miniset_bins/agievich[P]bee2[P]build_O0[P]test[P]testbee2
+/home/manwoong/pavlov-data/miniset_bins/cmusphinx[P]pocketsphinx[P]build_O0[P]pocketsphinx
+/home/manwoong/pavlov-data/miniset_bins/CESNET[P]libyang[P]build_O0[P]libyang.so.3.6.10

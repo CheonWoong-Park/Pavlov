@@ -1,0 +1,83 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments and local dependency state
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
+.python-version
+
+# Local secrets and machine-specific config
+.env
+.env.*
+!.env.example
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and transient run output
+*.log
+logs/*.log
+runs/
+outputs/
+wandb/
+mlruns/
+
+# Model checkpoints and ML artifacts
+checkpoints/*
+!checkpoints/.gitkeep
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.bin
+
+# Project data artifacts
+data/bulk
+data/raw/*
+!data/raw/.gitkeep
+data/binaries/*
+!data/binaries/.gitkeep
+data/pseudocode/*
+!data/pseudocode/.gitkeep
+data/anonymized/*
+!data/anonymized/.gitkeep
+
+# Binary/archive inputs produced or downloaded during experiments
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.exe
+
+# Ghidra project artifacts
+*.gpr
+*.rep
+
+# Nested external repository metadata
+tools/LLM4Decompile/.git/
