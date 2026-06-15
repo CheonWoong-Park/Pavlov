@@ -1,0 +1,20 @@
+{
+ "arm": "ar",
+ "model": null,
+ "data": "data/matched/balanced_train.jsonl",
+ "out": "checkpoints/ar_s0",
+ "seed": 0,
+ "seq_len": 4096,
+ "micro_batch": 4,
+ "grad_accum": 4,
+ "lr": 0.0002,
+ "max_steps": 2000,
+ "lora_r": 32,
+ "lora_alpha": 64,
+ "save_every": 100,
+ "log_every": 5,
+ "quant": "bf16",
+ "grad_checkpoint": true,
+ "bucket": true,
+ "model_id": "Qwen/Qwen2.5-Coder-7B"
+}
