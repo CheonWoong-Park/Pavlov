@@ -5,13 +5,16 @@
               t ~ U(eps,1) per sample, mask target tokens w.p. t, CE on masked
               positions weighted 1/t, normalized by target length.
 
-Hardware note: physical GPU is RTX 5070 12GB (plan assumed 4090 24GB), so the
-plan's G1 fallback chain (r16 -> QLoRA) is applied from the start: 4-bit NF4
-base + LoRA. Identical adapter budget across arms preserves comparison fairness.
+Hardware: training runs on A100 80GB. Default path is bf16 full-precision LoRA
+(--quant bf16) with gradient checkpointing off and length-bucketed batching, to
+maximize throughput. The 4-bit NF4 path (--quant nf4, +--grad-checkpoint) is kept
+as a fallback for small-VRAM cards. Identical adapter budget across arms preserves
+comparison fairness regardless of quant mode.
 
-Usage (pilot):
-  train_lora.py --arm diff --data pilot2k.jsonl --out checkpoints/diff_pilot \
-      --seed 0 --max-steps 200 --seq-len 2048
+Usage (pilot, A100 80GB):
+  train_lora.py --arm diff --data pilot2k_balanced.jsonl --out checkpoints/diff_pilot \
+      --seed 0 --max-steps 200 --seq-len 2048 \
+      --quant bf16 --micro-batch 8 --grad-accum 2 --bucket
 """
 
 import argparse
@@ -65,6 +68,24 @@ def collate(batch, pad_id):
         prompt_lens.append(len(p))
         total_lens.append(len(ids))
     return (torch.tensor(input_ids), torch.tensor(prompt_lens), torch.tensor(total_lens))
+
+
+class BucketBatchSampler:
+    """Length-sorted batches, batch order reshuffled each epoch (seeded)."""
+
+    def __init__(self, lengths, batch_size, seed):
+        self.order = sorted(range(len(lengths)), key=lambda i: lengths[i])
+        self.batch_size = batch_size
+        self.g = torch.Generator().manual_seed(seed)
+
+    def __iter__(self):
+        batches = [self.order[i:i + self.batch_size]
+                   for i in range(0, len(self.order), self.batch_size)]
+        for p in torch.randperm(len(batches), generator=self.g).tolist():
+            yield batches[p]
+
+    def __len__(self):
+        return (len(self.order) + self.batch_size - 1) // self.batch_size
 
 
 def ar_loss(model, input_ids, prompt_lens, total_lens, pad_id):
@@ -122,6 +143,12 @@ def main():
     ap.add_argument("--lora-alpha", type=int, default=64)
     ap.add_argument("--save-every", type=int, default=100)
     ap.add_argument("--log-every", type=int, default=5)
+    ap.add_argument("--quant", choices=["nf4", "bf16"], default="nf4",
+                    help="nf4 = 4-bit QLoRA (12GB cards); bf16 = full-precision LoRA (A100 80GB)")
+    ap.add_argument("--grad-checkpoint", action="store_true",
+                    help="enable gradient checkpointing (saves VRAM, ~30%% slower); off by default")
+    ap.add_argument("--bucket", action="store_true",
+                    help="length-bucketed batching to cut padding waste at micro-batch > 1")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -135,18 +162,23 @@ def main():
     from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
     tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-    bnb = BitsAndBytesConfig(
-        load_in_4bit=True, bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
     cls = AutoModelForCausalLM if args.arm == "ar" else AutoModel
-    model = cls.from_pretrained(
-        model_id, quantization_config=bnb, trust_remote_code=True,
-        torch_dtype=torch.bfloat16, attn_implementation="sdpa")
-    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
-    try:
-        model.gradient_checkpointing_enable()
-    except Exception as e:
-        print("grad ckpt enable failed:", e)
+    if args.quant == "nf4":
+        bnb = BitsAndBytesConfig(
+            load_in_4bit=True, bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
+        model = cls.from_pretrained(
+            model_id, quantization_config=bnb, trust_remote_code=True,
+            torch_dtype=torch.bfloat16, attn_implementation="sdpa")
+        model = prepare_model_for_kbit_training(
+            model, use_gradient_checkpointing=args.grad_checkpoint)
+    else:  # bf16 full-precision LoRA (A100 80GB)
+        model = cls.from_pretrained(
+            model_id, trust_remote_code=True,
+            torch_dtype=torch.bfloat16, attn_implementation="sdpa")
+        if args.grad_checkpoint:
+            model.gradient_checkpointing_enable()
+            model.enable_input_require_grads()
 
     lcfg = LoraConfig(
         r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=0.05,
@@ -166,9 +198,14 @@ def main():
 
     pad_id = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
     ds = PairDataset(args.data, tok, args.seq_len, args.arm)
-    dl = DataLoader(ds, batch_size=args.micro_batch, shuffle=True,
-                    collate_fn=lambda b: collate(b, pad_id),
-                    generator=torch.Generator().manual_seed(args.seed))
+    if args.bucket:
+        lengths = [len(p) + len(t) for p, t in ds.rows]
+        dl = DataLoader(ds, collate_fn=lambda b: collate(b, pad_id),
+                        batch_sampler=BucketBatchSampler(lengths, args.micro_batch, args.seed))
+    else:
+        dl = DataLoader(ds, batch_size=args.micro_batch, shuffle=True,
+                        collate_fn=lambda b: collate(b, pad_id),
+                        generator=torch.Generator().manual_seed(args.seed))
 
     opt = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad], lr=args.lr,

@@ -51,38 +51,52 @@ bitsandbytes 0.49.2, accelerate 1.14.0.
 
 ## 4. Gate 1 — pilot (본 학습 전 필수)
 
-DiffuCoder QLoRA로 200 step 정도. 통과 기준: **loss가 뚜렷하게 감소하고 VRAM이 예산 안**.
+A100 80GB, bf16 LoRA로 200 step. 통과 기준: **loss가 뚜렷하게 감소하고 batch>1·bf16
+경로가 두 arm 모두 정상 동작**. 학습 머신이 A100 80GB이므로 4-bit/grad-checkpoint
+없이 throughput을 최대로 끌어쓴다.
 
 ```bash
 # diffusion arm
 .venv/bin/python src/train_lora.py --arm diff \
   --data data/matched/pilot2k_balanced.jsonl --out checkpoints/diff_pilot \
-  --seed 0 --max-steps 200 --seq-len 2048
-# AR arm (대조)
+  --seed 0 --max-steps 200 --seq-len 2048 \
+  --quant bf16 --micro-batch 8 --grad-accum 2 --bucket
+# AR arm (대조) — 동일 플래그
 .venv/bin/python src/train_lora.py --arm ar \
   --data data/matched/pilot2k_balanced.jsonl --out checkpoints/ar_pilot \
-  --seed 0 --max-steps 200 --seq-len 2048
+  --seed 0 --max-steps 200 --seq-len 2048 \
+  --quant bf16 --micro-batch 8 --grad-accum 2 --bucket
 ```
 
-- 24GB GPU(4090 등)라면 계획서 원안대로 VRAM 기준 20GB 이하. 여유가 보이면
-  `--seq-len 4096`으로 올리되 두 arm에 똑같이 적용.
-- 12GB GPU라면 seq 2048 유지, VRAM 기준 11.5GB 이하.
+- effective batch = micro-batch × grad-accum = **16 고정**(원안과 동일). throughput을
+  더 짜내려면 첫 로그의 `vram_peak_gb`를 보고 micro-batch를 키운다:
+  - bf16 7B 가중치 ~14GB. 첫 step VRAM이 55GB 아래면 `--micro-batch 16 --grad-accum 1`로.
+  - OOM 나면 `--micro-batch 4 --grad-accum 4`, 그래도 안 되면 `--grad-checkpoint` 추가.
+  - micro-batch는 16을 넘기지 말 것(넘기면 effective batch가 바뀌어 학습 동역학·비교가 달라짐).
 - loss와 VRAM은 step마다 `<out>/train_log.jsonl`에 기록된다.
-- diff arm 첫 step에서 `model(...).logits`가 나오는지 확인할 것. DreamModel의
-  forward가 logits를 반환해야 하는데, 만약 시그니처가 다르면 `diff_loss`의
-  모델 호출부를 remote code에 맞게 고쳐야 한다.
+- diff arm 첫 step에서 `model(...).logits`가 나오는지, batch>1에서 `logits[masked]`
+  gather가 깨지지 않는지 확인할 것. 시그니처가 다르면 `diff_loss` 모델 호출부를
+  remote code에 맞게 고친다.
+- transformers 5.x에서 bf16 + `trust_remote_code` 로드가 실패하면 2절 주의대로
+  4.46~4.51로 내리고 두 arm 동일하게 맞춘다.
 
 ## 5. 본 학습 — 4런 (Gate 1 통과 후)
 
 ```bash
 for seed in 0 1; do
   .venv/bin/python src/train_lora.py --arm diff --data data/matched/balanced_train.jsonl \
-    --out checkpoints/diff_s$seed --seed $seed --max-steps 2000 --seq-len <pilot에서 정한 값>
+    --out checkpoints/diff_s$seed --seed $seed --max-steps 2000 --seq-len 4096 \
+    --quant bf16 --micro-batch <pilot에서 정한 값> --grad-accum <16/micro> --bucket
   .venv/bin/python src/train_lora.py --arm ar --data data/matched/balanced_train.jsonl \
-    --out checkpoints/ar_s$seed --seed $seed --max-steps 2000 --seq-len <같은 값>
+    --out checkpoints/ar_s$seed --seed $seed --max-steps 2000 --seq-len 4096 \
+    --quant bf16 --micro-batch <같은 값> --grad-accum <같은 값> --bucket
 done
 ```
 
+- 본 학습은 `--seq-len 4096`로: balanced_train이 4096 token 이하로 필터링돼 있어
+  2048로 돌리면 2048~4096 구간 샘플이 통째로 skip된다(데이터 손실). 단 seq 4096은
+  activation이 커지므로 pilot보다 micro-batch를 한 단계 낮추거나(예: 4) `--grad-checkpoint`가
+  필요할 수 있다 — pilot VRAM에서 판단.
 - LoRA r=32 / alpha=64, 대상 모듈 q/k/v/o/gate/up/down — 두 arm 동일 (스크립트 기본값).
 - 런마다 `run_config.json`이 자동 저장된다. checkpoint는 save_every(기본 100) step마다.
 - 학습셋을 계획 목표인 100k로 늘리려면: volume 추가 다운로드 →

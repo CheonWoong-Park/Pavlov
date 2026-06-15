@@ -28,6 +28,10 @@ __pypackages__/
 *.swp
 *.swo
 
+# Credentials / private keys (never commit)
+*.pem
+*.key
+
 # OS files
 .DS_Store
 Thumbs.db
