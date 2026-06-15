@@ -115,7 +115,8 @@ def diff_loss(model, input_ids, prompt_lens, total_lens, mask_id, eps=1e-3):
             masked[i, idx] = True
     noisy = input_ids.clone()
     noisy[masked] = mask_id
-    attn = (pos < total_lens[:, None].to(device)).long()
+    key_valid = pos < total_lens[:, None].to(device)            # (b, L)
+    attn = key_valid[:, None, None, :]                          # (b,1,1,L) bool pad mask, bidirectional, for DreamModel SDPA
     logits = model(input_ids=noisy, attention_mask=attn).logits
     ce = torch.nn.functional.cross_entropy(
         logits[masked], input_ids[masked], reduction="none")
@@ -174,7 +175,7 @@ def main():
             model, use_gradient_checkpointing=args.grad_checkpoint)
     else:  # bf16 full-precision LoRA (A100 80GB)
         model = cls.from_pretrained(
-            model_id, trust_remote_code=True,
+            model_id, trust_remote_code=True, device_map="cuda",
             torch_dtype=torch.bfloat16, attn_implementation="sdpa")
         if args.grad_checkpoint:
             model.gradient_checkpointing_enable()
