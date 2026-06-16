@@ -81,7 +81,9 @@ def test_oracle_drives_loss_to_zero():
     torch.manual_seed(2)
     input_ids, plens, tlens = make_batch()
     m = StubModel(oracle=True)
-    m.correct = input_ids
+    # DreamModel/diff_loss read token i from logits[i-1] (shifted), so an oracle that
+    # drives the loss to ~0 must place the correct token one position to the left.
+    m.correct = torch.roll(input_ids, shifts=-1, dims=1)
     loss = diff_loss(m, input_ids, plens, tlens, MASK_ID)
     assert loss.item() < 1e-3, f"oracle loss should be ~0, got {loss.item()}"
 

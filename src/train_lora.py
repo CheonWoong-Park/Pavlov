@@ -132,6 +132,11 @@ def diff_loss(model, input_ids, prompt_lens, total_lens, mask_id, eps=1e-3):
     key_valid = pos < total_lens[:, None].to(device)            # (b, L)
     attn = key_valid[:, None, None, :]                          # (b,1,1,L) bool pad mask, bidirectional, for DreamModel SDPA
     logits = model(input_ids=noisy, attention_mask=attn).logits
+    # DreamModel uses a shifted prediction convention (token at position i is read
+    # from the logits at i-1), and its diffusion_generate shifts logits the same way.
+    # Training must match, or the adapter learns a 1-off alignment and collapses at
+    # generation. See generation_utils.py: logits = cat([logits[:, :1], logits[:, :-1]]).
+    logits = torch.cat([logits[:, :1], logits[:, :-1]], dim=1)
     ce = torch.nn.functional.cross_entropy(
         logits[masked], input_ids[masked], reduction="none")
     # weight 1/t per sample, normalize by target length
