@@ -42,6 +42,7 @@ RoPE 초기화와 충돌한다(`KeyError: 'default'`). 두 arm은 같은 transfo
 | `--bucket` | length-bucketed batching (micro-batch>1의 padding 낭비 제거) |
 | `--micro-batch / --grad-accum` | 곱이 effective batch. 본 학습은 16 유지 |
 | `--seq-len` | 본 학습 4096 (2048로 두면 2048–4096 token 샘플이 skip되어 데이터 손실) |
+| `--gen-len` | diff arm 고정 canvas 길이(기본 512). response를 EOS로 이 길이까지 padding(LLaDA SFT recipe). 두 arm 공통으로 response가 이보다 긴 샘플은 제외(동일 subset). **평가의 max-new-tokens와 일치시킨다** |
 | `--max-steps / --seed / --lora-r / --lora-alpha` | step 수 / seed / LoRA r·alpha |
 
 런마다 `<out>/run_config.json`이 저장되고, step별 loss·VRAM은 `<out>/train_log.jsonl`에
@@ -65,10 +66,17 @@ $PY src/train_lora.py --arm diff --data data/matched/pilot2k_balanced.jsonl \
 ```bash
 for arm in diff ar; do
   $PY src/train_lora.py --arm $arm --data data/matched/balanced_train.jsonl \
-    --out checkpoints/${arm}_s0 --seed 0 --max-steps 2000 --seq-len 4096 \
+    --out checkpoints/${arm}_s0 --seed 0 --max-steps 2000 --seq-len 4096 --gen-len 512 \
     --quant bf16 --micro-batch 8 --grad-accum 2 --bucket --grad-checkpoint
 done
 ```
+
+**diff arm의 EOS-padding (필수).** masked-diffusion 모델은 생성 시 *전부 mask된 고정 길이
+canvas*에서 시작해 점진적으로 unmask한다. 따라서 학습도 같은 형태여야 한다 — response를
+EOS로 `gen-len`까지 padding하고 그 EOS tail까지 예측 대상에 포함시켜야, 모델이 (1) 빈
+canvas에서 처음부터 생성하고 (2) EOS로 종료하는 법을 배운다. 이 padding이 없으면 모델은
+"문맥 주어진 구멍 메우기"만 학습해 loss는 떨어지지만 **생성 시 collapse**한다(반복 토큰).
+`--gen-len`은 평가의 `--max-new-tokens`와 같은 값을 쓴다.
 
 - LoRA r=32 / alpha=64, 대상 모듈 q/k/v/o/gate/up/down — 두 arm 동일(스크립트 기본값).
 - A100 80GB 실측: bf16 + grad-checkpoint, seq 4096에서 VRAM peak는 arm에 따라 약 35–47GB.

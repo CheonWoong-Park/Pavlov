@@ -33,11 +33,12 @@ PROMPT_TMPL = "### Pseudocode:\n{pseudo}\n### Skeleton:\n"
 
 
 class PairDataset(Dataset):
-    def __init__(self, path, tokenizer, seq_len, arm):
+    def __init__(self, path, tokenizer, seq_len, arm, gen_len):
         self.rows = []
         self.tok = tokenizer
         self.seq_len = seq_len
         self.arm = arm
+        eos = tokenizer.eos_token_id
         skipped = 0
         for line in open(path):
             r = json.loads(line)
@@ -45,11 +46,24 @@ class PairDataset(Dataset):
             target = r["target"] + (tokenizer.eos_token or "")
             p_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
             t_ids = tokenizer(target, add_special_tokens=False)["input_ids"]
+            # Both arms train on the same subset: the response must fit the diffusion
+            # canvas so the comparison sees identical data.
+            if len(t_ids) > gen_len:
+                skipped += 1
+                continue
+            # diff arm trains on a FIXED-length canvas: pad the response with EOS up to
+            # gen_len and predict those EOS too (LLaDA SFT recipe). This teaches the model
+            # to generate from a fully-masked canvas and to terminate via EOS — without it
+            # the model only learns hole-filling and collapses at generation. The AR arm
+            # keeps the variable-length response (standard left-to-right CE).
+            if arm == "diff":
+                t_ids = t_ids + [eos] * (gen_len - len(t_ids))
             if len(p_ids) + len(t_ids) > seq_len:
                 skipped += 1
                 continue
             self.rows.append((p_ids, t_ids))
-        print(f"dataset: {len(self.rows)} usable, {skipped} skipped (>{seq_len} tok)")
+        print(f"dataset: {len(self.rows)} usable, {skipped} skipped "
+              f"(response >{gen_len} tok or prompt+response >{seq_len})")
 
     def __len__(self):
         return len(self.rows)
@@ -150,6 +164,11 @@ def main():
                     help="enable gradient checkpointing (saves VRAM, ~30%% slower); off by default")
     ap.add_argument("--bucket", action="store_true",
                     help="length-bucketed batching to cut padding waste at micro-batch > 1")
+    ap.add_argument("--gen-len", type=int, default=512,
+                    help="diff arm: fixed response canvas length. Responses are EOS-padded to "
+                         "this so the model learns to generate from a fully-masked canvas and "
+                         "terminate via EOS. Samples with longer responses are skipped (both "
+                         "arms, to keep a shared subset). Use as the eval max-new-tokens.")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -198,7 +217,7 @@ def main():
         print("mask_token_id:", mask_id)
 
     pad_id = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
-    ds = PairDataset(args.data, tok, args.seq_len, args.arm)
+    ds = PairDataset(args.data, tok, args.seq_len, args.arm, args.gen_len)
     if args.bucket:
         lengths = [len(p) + len(t) for p, t in ds.rows]
         dl = DataLoader(ds, collate_fn=lambda b: collate(b, pad_id),
