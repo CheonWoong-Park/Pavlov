@@ -54,7 +54,8 @@ def gen_ar(model, tok, prompt, max_new_tokens):
 
 
 @torch.no_grad()
-def gen_diff(model, tok, prompt, max_new_tokens, steps, temperature, top_p):
+def gen_diff(model, tok, prompt, max_new_tokens, tokens_per_step, temperature, top_p):
+    steps = max(1, max_new_tokens // tokens_per_step)
     ids = tok(prompt, return_tensors="pt").to(model.device)
     out = model.diffusion_generate(
         ids["input_ids"], attention_mask=ids["attention_mask"],
@@ -73,7 +74,9 @@ def main():
     ap.add_argument("--out", required=True, help="output jsonl of generated skeletons")
     ap.add_argument("--quant", choices=["bf16", "nf4"], default="nf4")
     ap.add_argument("--max-new-tokens", type=int, default=512)
-    ap.add_argument("--steps", type=int, default=256, help="diff arm: denoising steps")
+    ap.add_argument("--tokens-per-step", type=int, default=1,
+                    help="diff arm: tokens unmasked per denoising step. 1 = highest quality "
+                         "(steps = max_new_tokens); raise for speed. >4 tends to garble output.")
     ap.add_argument("--temperature", type=float, default=0.2)
     ap.add_argument("--top-p", type=float, default=0.95)
     ap.add_argument("--limit", type=int, default=0, help=">0: only first N items (smoke test)")
@@ -93,7 +96,7 @@ def main():
                 skel = gen_ar(model, tok, prompt, args.max_new_tokens)
             else:
                 skel = gen_diff(model, tok, prompt, args.max_new_tokens,
-                                args.steps, args.temperature, args.top_p)
+                                args.tokens_per_step, args.temperature, args.top_p)
             rec = {"task_id": item["task_id"], "type": item["type"], "skeleton": skel}
             f.write(json.dumps(rec) + "\n")
             f.flush()
