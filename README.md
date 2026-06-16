@@ -1,4 +1,4 @@
-# Pavlov — Diffusion으로 pseudocode에서 AST 구조를 분석하는 decompilation 연구
+# Pavlov: AST 구조 복원을 위한 Diffusion 기반 Decompilation
 
 Ghidra가 내놓는 pseudocode를 읽을 만한 C로 복원하는 문제를 두 단계로 나눈다. 핵심은
 AST 구조를 복원하는 1단계이고, 모델이 만드는 **anonymized skeleton**은 이름과 literal을
