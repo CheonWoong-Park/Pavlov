@@ -21,8 +21,7 @@ Ghidra pseudocode
 
 | 문서 | 내용 |
 |---|---|
-| [`plan.md`](plan.md) | 연구 계획·설계 — RQ, 방법, 실험 조건, 평가 지표, 분석 |
-| [`docs/research_overview.md`](docs/research_overview.md) | 설계 개요 (한눈에) |
+| [`docs/research.md`](docs/research.md) | 연구 개요와 방법 — 배경, RQ, 데이터 전처리·학습·평가 전 과정, 실험 설계, 한계 |
 | [`docs/data_pipeline.md`](docs/data_pipeline.md) | 데이터 파이프라인 — 추출 → Ghidra → matching → anonymization → 학습셋 |
 | [`docs/training.md`](docs/training.md) | 학습 재현 — 환경, 커맨드, 하이퍼파라미터 |
 | [`docs/evaluation.md`](docs/evaluation.md) | 평가 harness — 생성, Gate 3, filler, re-executability |
@@ -44,9 +43,9 @@ pseudocode·대용량 캐시는 `.gitignore`로 제외한다.
 
 ```
 pavlov/
-├── plan.md                  # 연구 계획·설계
 ├── README.md
 ├── requirements-lock.txt    # 의존성 lock
+├── docs/research.md         # 연구 개요와 방법 (배경·RQ·데이터·학습·평가·한계)
 ├── src/
 │   ├── zipsplit_extract.py  # split zip 부분 추출 (Zip64 central directory 파싱)
 │   ├── select_miniset.py    # 바이너리 선정·추출 (opt별, 프로젝트 단위)
