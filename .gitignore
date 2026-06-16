@@ -85,3 +85,7 @@ data/anonymized/*
 
 # Nested external repository metadata
 tools/LLM4Decompile/.git/
+results/*_gen.jsonl
+results/*_filled.jsonl
+results/*_reexec.jsonl
+results/*smoke*
