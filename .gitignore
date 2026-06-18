@@ -94,7 +94,6 @@ results/*smoke*
 eval_pull_*/
 checkpoints_run2/
 figures/
-*.pptx
 poster_draft.md
 
 # Large matched datasets (regenerable; kept locally, not in git)
