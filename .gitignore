@@ -89,3 +89,13 @@ results/*_gen.jsonl
 results/*_filled.jsonl
 results/*_reexec.jsonl
 results/*smoke*
+
+# Result dumps and local experiment outputs (kept locally, not in git)
+eval_pull_*/
+checkpoints_run2/
+figures/
+*.pptx
+poster_draft.md
+
+# Large matched datasets (regenerable; kept locally, not in git)
+data/matched/*.jsonl
