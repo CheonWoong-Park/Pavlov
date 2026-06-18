@@ -1,6 +1,6 @@
-<p align="center"><img src="pavlov.jpg" width="420" alt="Pavlov"></p>
-
 # Pavlov: AST 구조 복원을 위한 Diffusion 기반 Decompilation
+
+<p align="center"><img src="pavlov.jpg" width="420" alt="Pavlov"></p>
 
 기존 LLM 기반 Decompile은 한 토큰씩 생성하는 **Autoregressive(AR)** 방식에 의존하지만, 코드 구조 복원은 전역 제약이 강해 단방향 생성에 불리합니다. **Diffusion model**은 시퀀스 전체를 양방향으로 정제하므로 전역 구조 복원에 유리할 수 있습니다. 본 연구는 **AST skeleton 복원** 단계에 **Diffusion**을 적용하고, 동일 계열 backbone에서 파생된 Diffusion·AR 모델을 같은 데이터·같은 크기 LoRA로 학습하여 두 방식을 통제 비교합니다.
 
