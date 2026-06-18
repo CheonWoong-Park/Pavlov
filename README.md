@@ -20,6 +20,8 @@
 
 ## 제안 방법
 
+<p align="center"><img src="pipeline.png" width="780" alt="Experiment pipeline"></p>
+
 ### Step 1. 데이터 전처리
 - `LLM4Binary/decompile-bench`에서 source 함수와 컴파일된 binary를 가져옴 (binary는 split zip에서 필요 구간만 부분 추출)
 - **Ghidra** `analyzeHeadless`로 함수별 pseudocode를 jsonl로 추출
