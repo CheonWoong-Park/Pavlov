@@ -97,3 +97,13 @@ LoRA 설정: `r=32`, `alpha=64`, 학습 파라미터 약 80M (전체의 1.05%)
 | [`docs/data_pipeline.md`](docs/data_pipeline.md) | 데이터 파이프라인 — 추출 → Ghidra → matching → anonymization → 학습셋 |
 | [`docs/training.md`](docs/training.md) | 학습 재현 — 환경, 커맨드, 하이퍼파라미터 |
 | [`docs/evaluation.md`](docs/evaluation.md) | 평가 harness — 생성, Gate 3, filler, re-executability |
+
+## 학습된 LoRA 어댑터
+
+학습한 LoRA 어댑터는 GitHub Releases에 있습니다.
+
+| Release | 내용 |
+|---|---|
+| [v0.3-adapters-s1](https://github.com/CheonWoong-Park/Pavlov/releases/tag/v0.3-adapters-s1) | seed 1 (diff_s1, ar_s1), gen_len 512 |
+| [v0.2-adapters](https://github.com/CheonWoong-Park/Pavlov/releases/tag/v0.2-adapters) | seed 0 (diff_s0, ar_s0), gen_len 512, shift-fixed |
+| [v0.1-adapters](https://github.com/CheonWoong-Park/Pavlov/releases/tag/v0.1-adapters) | 초기 버전 |
